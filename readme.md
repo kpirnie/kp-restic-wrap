@@ -1,6 +1,6 @@
 # <img src="https://c.kcp.im/logos/kevinpirnie-favicon-initials.svg" alt="kp ~ Restic Backup Wrapper" width="64" valign="middle"> KP Restic Wrap
 
-[![Latest Release](https://img.shields.io/github/v/release/kpirnie/kp-restic-wrap)](https://github.com/kpirnie/kp-restic-wrap/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/kpirnie/kp-restic-wrap?style=for-the-badge&labelColor=000)](https://github.com/kpirnie/kp-restic-wrap/releases/latest)
 [![Last Commit](https://img.shields.io/github/last-commit/kpirnie/kp-restic-wrap?style=for-the-badge&labelColor=000)](https://github.com/kpirnie/kp-restic-wrap/commits/main)
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=000)](LICENSE)
 
