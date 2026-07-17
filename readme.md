@@ -1,6 +1,4 @@
-# <img src="https://c.kcp.im/logos/kevinpirnie-favicon-initials.svg" alt="kp ~ Restic Backup Wrapper" width="64" valign="middle"> kp
-
-## Restic Backup Wrapper
+# <img src="https://c.kcp.im/logos/kevinpirnie-favicon-initials.svg" alt="kp ~ Restic Backup Wrapper" width="64" valign="middle"> KP Restic Wrap
 
 [![Build Main](https://img.shields.io/github/actions/workflow/status/kpirnie/kp-restic-wrap/build.yml?branch=main&label=Main&logoColor=white&logo=github&labelColor=000&style=for-the-badge)](https://github.com/kpirnie/kp-restic-wrap/actions?query=workflow%3A%22Build+and+Push%22+branch%3Amain)
 [![Build Develop](https://img.shields.io/github/actions/workflow/status/kpirnie/kp-restic-wrap/build.yml?branch=develop&label=Develop&logoColor=white&logo=github&labelColor=000&style=for-the-badge)](https://github.com/kpirnie/kp-restic-wrap/actions?query=workflow%3A%22Build+and+Push%22+branch%3Adevelop)
@@ -14,10 +12,198 @@
 
 ---
 
-## License
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
 
-`kp` is licensed under the [MIT License](LICENSE). See the `LICENSE` file in the repository for the full license text.
+A configuration-driven CLI wrapper around [restic](https://restic.net/) for backup, restore, and mount operations against S3-compatible storage. Native Linux binary, no container required.
 
 ---
 
+## Requirements
+
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
+
+- Linux
+- `restic` in PATH
+- `fusermount` for the mount command (`fuse3` package on Debian/Ubuntu)
+- An S3-compatible bucket
+
+[Back To Top](#top)
+
+---
+
+## Installation
+
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
+
+```bash
+git clone https://github.com/kpirnie/kp-restic-wrap.git
+cd kp-restic-wrap
+go build -o kp .
+sudo mv kp /usr/local/bin/
+```
+
+[Back To Top](#top)
+
+---
+
+## Configuration
+
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
+
+All configuration lives in `/etc/kp/config.yaml` (override with `--config`). Create and manage it interactively:
+
+```bash
+sudo kp configure
+```
+
+The walk covers every setting, offers to initialize any repository that doesn't exist yet, and rotates repository keys if you change the encryption password. The file is written with `0600` permissions.
+
+### Settings
+
+| Setting | Description | Default |
+| ------- | ----------- | ------- |
+| `s3.endpoint` | S3 endpoint | `s3.amazonaws.com` |
+| `s3.key` | S3 API key | |
+| `s3.secret` | S3 API secret | |
+| `s3.bucket` | S3 bucket name | |
+| `s3.region` | S3 region | `us-east-1` |
+| `temp_path` | Disk-backed staging path for restic | `/var/tmp/kp` |
+| `encryption.password` | Repository encryption password (required, never auto-generated) | |
+| `backups[].name` | Repository name for this backup set | hostname |
+| `backups[].start_path` | Path to back up | `/home` |
+| `backups[].retention_days` | Days of snapshots to keep | `30` |
+| `backups[].excludes` | Restic exclude patterns | |
+
+### Example
+
+```yaml
+s3:
+  endpoint: s3.amazonaws.com
+  key: AKIAIOSFODNN7EXAMPLE
+  secret: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  bucket: my-backup-bucket
+  region: us-east-1
+temp_path: /var/tmp/kp
+encryption:
+  password: my-super-secret-encryption-password
+backups:
+  - name: webserver-01
+    start_path: /home
+    retention_days: 30
+    excludes:
+      - "**/node_modules"
+      - "**/.cache"
+  - name: etc-configs
+    start_path: /etc
+    retention_days: 90
+    excludes: []
+```
+
+Each backup name gets its own restic repository under the bucket. `temp_path` exists because tmpfs-backed `/tmp` can corrupt restores larger than available RAM — point it at real disk.
+
+[Back To Top](#top)
+
+---
+
+## Commands
+
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
+
+### configure
+
+Interactive create/edit of the configuration, repository initialization, and key rotation on password change.
+
+```bash
+sudo kp configure
+```
+
+### backup
+
+Backs up every configured entry, then applies retention (`--keep-within`) and prunes, per entry. Entries run concurrently (capped at half the CPU count) with output grouped per entry. Exits non-zero only if a backup fully failed; unreadable-file warnings (restic exit 3) are logged but the snapshot still lands.
+
+```bash
+sudo kp backup
+```
+
+### restore
+
+Fully interactive: pick the backup, pick the snapshot by date/time, enter the target path, optionally limit to specific paths within the snapshot.
+
+```bash
+sudo kp restore
+```
+
+The full original path structure is recreated under the target (e.g. restoring to `/tmp/restore` produces `/tmp/restore/home/...`).
+
+### mount
+
+Fully interactive: pick the backup, enter the mountpoint. Holds the FUSE mount in the foreground; Ctrl-C unmounts cleanly with a `fusermount -u` fallback.
+
+```bash
+sudo kp mount
+```
+
+Browse snapshots at `<mountpoint>/snapshots/`.
+
+[Back To Top](#top)
+
+---
+
+## Automation
+
+[Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
+
+### systemd
+
+**`/etc/systemd/system/kp-backup.service`:**
+
+```ini
+[Unit]
+Description=KP Restic Backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/kp backup
+```
+
+**`/etc/systemd/system/kp-backup.timer`:**
+
+```ini
+[Unit]
+Description=Run KP Backup Daily at 2 AM
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now kp-backup.timer
+```
+
+### cron
+
+```
+0 2 * * * /usr/local/bin/kp backup >> /var/log/kp-backup.log 2>&1
+```
+
+[Back To Top](#top)
+
+---
+
+## License
+
+MIT License — see [LICENSE](https://github.com/kpirnie/kp-restic-wrap/blob/main/LICENSE) for details.
+
 ## Support
+
+- GitHub: <https://github.com/kpirnie/kp-restic-wrap>
+- Issues: <https://github.com/kpirnie/kp-restic-wrap/issues>
+
+[Back To Top](#top)
