@@ -35,12 +35,26 @@ A configuration-driven CLI wrapper around [restic](https://restic.net/) for back
 
 [Requirements](#requirements) | [Installation](#installation) | [Configuration](#configuration) | [Commands](#commands) | [Automation](#automation)
 
-```bash
-git clone https://github.com/kpirnie/kp-restic-wrap.git
-cd kp-restic-wrap
-go build -o kp .
-sudo mv kp /usr/local/bin/
-```
+### Bootstrap (recommended)
+
+Downloads the latest release binary for your architecture (amd64/arm64) and installs it to `/usr/local/bin/kp`:
+
+    ```bash
+    curl -fsSL https://raw.githubusercontent.com/kpirnie/kp-restic-wrap/main/bootstrap.sh | sudo bash
+    ```
+
+### From source
+
+    ```bash
+    git clone https://github.com/kpirnie/kp-restic-wrap.git
+    cd kp-restic-wrap
+    go build -o kp .
+    sudo mv kp /usr/local/bin/
+    ```
+
+### Releases
+
+Prebuilt binaries and checksums are published on every version tag: <https://github.com/kpirnie/kp-restic-wrap/releases>
 
 [Back To Top](#top)
 
